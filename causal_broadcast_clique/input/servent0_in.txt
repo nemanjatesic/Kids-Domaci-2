@@ -1,0 +1,6 @@
+info
+pause 1000
+causal_broadcast a
+pause 9000
+print_causal
+stop
