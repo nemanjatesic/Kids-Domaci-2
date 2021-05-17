@@ -9,28 +9,26 @@ import servent.message.snapshot.NaiveTellAmountMessage;
 import servent.message.util.MessageUtil;
 
 public class NaiveAskAmountHandler implements MessageHandler {
+    private Message clientMessage;
+    private BitcakeManager bitcakeManager;
 
-	private Message clientMessage;
-	private BitcakeManager bitcakeManager;
-	
-	public NaiveAskAmountHandler(Message clientMessage, BitcakeManager bitcakeManager) {
-		this.clientMessage = clientMessage;
-		this.bitcakeManager = bitcakeManager;
-	}
+    public NaiveAskAmountHandler(Message clientMessage, BitcakeManager bitcakeManager) {
+        this.clientMessage = clientMessage;
+        this.bitcakeManager = bitcakeManager;
+    }
 
-	@Override
-	public void run() {
-		if (clientMessage.getMessageType() == MessageType.NAIVE_ASK_AMOUNT) {
-			int currentAmount = bitcakeManager.getCurrentBitcakeAmount();
-			
-			Message tellMessage = new NaiveTellAmountMessage(
-					clientMessage.getReceiverInfo(), clientMessage.getOriginalSenderInfo(), currentAmount);
-			
-			MessageUtil.sendMessage(tellMessage);
-		} else {
-			AppConfig.timestampedErrorPrint("Ask amount handler got: " + clientMessage);
-		}
+    @Override
+    public void run() {
+        if (clientMessage.getMessageType() == MessageType.NAIVE_ASK_AMOUNT) {
+            int currentAmount = bitcakeManager.getCurrentBitcakeAmount();
 
-	}
+            Message tellMessage = new NaiveTellAmountMessage(
+                    clientMessage.getReceiverInfo(), clientMessage.getOriginalSenderInfo(), currentAmount);
 
+            MessageUtil.sendMessage(tellMessage);
+        } else {
+            AppConfig.timestampedErrorPrint("Ask amount handler got: " + clientMessage);
+        }
+
+    }
 }

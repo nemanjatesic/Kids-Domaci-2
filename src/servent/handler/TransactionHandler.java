@@ -1,45 +1,57 @@
 package servent.handler;
 
 import app.AppConfig;
+import app.CausalBroadcastShared;
+import app.ServentInfo;
 import app.snapshot_bitcake.BitcakeManager;
-import app.snapshot_bitcake.LaiYangBitcakeManager;
+import servent.message.CausalBroadcastMessage;
 import servent.message.Message;
 import servent.message.MessageType;
+import servent.message.TransactionMessage;
+import servent.message.util.MessageUtil;
 
-public class TransactionHandler implements MessageHandler {
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-	private Message clientMessage;
-	private BitcakeManager bitcakeManager;
-	
-	public TransactionHandler(Message clientMessage, BitcakeManager bitcakeManager) {
-		this.clientMessage = clientMessage;
-		this.bitcakeManager = bitcakeManager;
-	}
+public class TransactionHandler implements MessageHandler{
 
-	@Override
-	public void run() {
-		if (clientMessage.getMessageType() == MessageType.TRANSACTION) {
-			String amountString = clientMessage.getMessageText();
-			
-			int amountNumber = 0;
-			try {
-				amountNumber = Integer.parseInt(amountString);
-			} catch (NumberFormatException e) {
-				AppConfig.timestampedErrorPrint("Couldn't parse amount: " + amountString);
-				return;
-			}
-			
-			bitcakeManager.addSomeBitcakes(amountNumber);
-			synchronized (AppConfig.colorLock) {
-				if (bitcakeManager instanceof LaiYangBitcakeManager && clientMessage.isWhite()) {
-					LaiYangBitcakeManager lyBitcakeManager = (LaiYangBitcakeManager)bitcakeManager;
-					
-					lyBitcakeManager.recordGetTransaction(clientMessage.getOriginalSenderInfo().getId(), amountNumber);
-				}
-			}
-		} else {
-			AppConfig.timestampedErrorPrint("Transaction handler got: " + clientMessage);
-		}
-	}
+    private Message clientMessage;
+    private BitcakeManager bitcakeManager;
 
+    private static Set<TransactionMessage> recieved = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    public TransactionHandler(Message clientMessage, BitcakeManager bitcakeManager) {
+        this.clientMessage = clientMessage;
+        this.bitcakeManager = bitcakeManager;
+    }
+
+    @Override
+    public void run() {
+        if (clientMessage.getMessageType() == MessageType.TRANSACTION) {
+            //Uvek radimo rebroadcast
+            TransactionMessage transactionMessage = (TransactionMessage) clientMessage;
+            ServentInfo senderInfo = transactionMessage.getOriginalSenderInfo();
+            if(senderInfo.getId() == AppConfig.myServentInfo.getId())
+            {
+                AppConfig.timestampedStandardPrint("Got own message back. No rebroadcast.");
+                return;
+            }
+            boolean didPut = recieved.add(transactionMessage);
+
+            if (didPut){
+                CausalBroadcastShared.addPendingMessage(transactionMessage);
+                CausalBroadcastShared.checkPendingMessages();
+
+                for (Integer neighbor : AppConfig.myServentInfo.getNeighbors()) {
+                    MessageUtil.sendMessage(transactionMessage.changeReceiver(neighbor).makeMeASender());
+                }
+
+            }else {
+                AppConfig.timestampedStandardPrint("Already had this. No rebroadcast.");
+            }
+        } else {
+            AppConfig.timestampedErrorPrint("Transaction handler got: " + clientMessage);
+        }
+    }
 }
