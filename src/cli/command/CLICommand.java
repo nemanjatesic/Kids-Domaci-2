@@ -8,13 +8,13 @@ package cli.command;
  */
 public interface CLICommand {
 
-    /**
-     * Command name, as given by the user on the CLI.
-     */
-    String commandName();
-
-    /**
-     * All command logic goes here. <code>args</code> is the user's input, with command name taken out.
-     */
-    void execute(String args);
+	/**
+	 * Command name, as given by the user on the CLI.
+	 */
+	String commandName();
+	
+	/**
+	 * All command logic goes here. <code>args</code> is the user's input, with command name taken out.
+	 */
+	void execute(String args);
 }
